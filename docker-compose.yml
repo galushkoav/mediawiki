@@ -1,0 +1,107 @@
+#Create user https://www.mediawiki.org/wiki/Manual:Installing_MediaWiki/ru
+#Смотреть расширения
+#http://mediawiki.smart-uk.ru/wiki/Special:Version
+version: '2.0'
+services:
+
+###mediawiki-server
+  php-fpm:
+    image: php-mediawiki:7.1
+    depends_on:
+      - postgres
+    hostname: mediawiki-server
+    volumes:
+      - "/docker-compose/SWARM/mediawiki/data/mediawiki/www:/var/www"
+    environment:
+      - "MEDIAWIKI_LANGUAGE_CODE=ru" 
+    mem_limit: 2g
+    cap_add:
+      - IPC_LOCK
+    restart: always
+    stdin_open: true
+    tty: true
+    networks:
+      mediawiki:
+        aliases:
+          - mediawiki
+
+  nginx:
+    image:  nginx
+    hostname: mediawiki-nginx
+    volumes:
+      - "/docker-compose/SWARM/mediawiki/data/mediawiki/www:/var/www"
+    ports:
+      - "192.168.2.2:1083:80"
+    restart: always
+    networks:
+      mediawiki:
+        aliases:
+          - mediawiki.smart-uk.ru
+    mem_limit: 256m
+
+  parsoid:
+    image: mediawiki-parsoid
+    hostname: parsoid
+    volumes:
+      - "/docker-compose/SWARM/mediawiki/data/mediawiki/www:/var/www"
+    restart: always
+    networks:
+      mediawiki:
+        aliases:
+          - parsoid
+    mem_limit: 512m
+
+
+  postgres:
+    image: postgres-10-4
+    volumes: 
+      - "/docker-compose/SWARM/mediawiki/data/mediawiki/pgdata:/var/lib/postgresql/data"
+    networks:
+      mediawiki:
+        aliases:
+          - postgres.local
+    environment:
+      - "POSTGRES_PASSWORD=CfitCyjdf18"
+      - "PGDATA=/var/lib/postgresql/data"
+      - "TZ=Asia/Yekaterinburg" 
+    restart: always
+    mem_limit: 2g
+
+  memcached:
+    image: memcached
+    networks:
+        mediawiki:
+          aliases:
+            - memcached
+    environment:
+       - "MEMCACHED_MEMORY_LIMIT=1024MB"
+    restart: always
+    mem_limit: 1024M
+
+  elasticsearch5master:
+    image: elasticsearch:5.4.3
+    hostname: elasticsearch5master
+    volumes:
+      - "/docker-compose/SWARM/mediawiki/data/mediawiki/elasticsearch/masternode:/usr/share/elasticsearch/data"
+    environment:
+      - "cluster.name=mediawiki"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    networks:
+      mediawiki:
+        aliases:
+          - elasticsearch.mediawiki
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    mem_limit: 2g
+    cap_add:
+      - IPC_LOCK
+    restart: always
+
+networks:
+  mediawiki:
+      driver: bridge
